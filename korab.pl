@@ -27,6 +27,7 @@ sub get_news($){
 	my $text = "";
 	while ($i < @elems){
 		if ($elems[$i]->tag eq 'h4'){
+			$title = $elems[$i]->as_text;
 			(my $first, my $rest) = split(/[.!?“]/,$text,2);
 			if (length($first.$title) > 80){
 				$first = substr($first,0,80-length($title))."..."
