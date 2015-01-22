@@ -18,13 +18,33 @@ my $with_desc = 0;
 
 binmode(STDOUT,":utf8");
 
+sub usage{
+	print "Usage: $0 [--config | -c FILE] [--output | -o <html|term>] [--verbosity|-v VERBOSITY] [-d | --desc] [-h | --help]\n";
+	exit 1;
+}
+
+sub help{
+	print <<AMEN ;
+"Usage: $0 [--config | -c FILE] [--output | -o <html|term>] [--verbosity|-v VERBOSITY] 
+  [-d | --desc] [-h | --help]"
+	-c, --config	Configuration file
+	-o, --output	Output format (HTML or terminal)
+	-v, --verbosity	Verbosity
+	-d, --desc	Print with description, not only titles
+	-h, --help	Print this help
+AMEN
+	exit 0;
+}
+
 Getopt::Long::Configure("bundling");
 
-my $res = GetOptions ("config=s" => \$cfg_file, 
-	"output:s" => \$out_type,
-	"verbosity:i" => \$verbosity,
-	"limit:i" => \$item_limit,
-	"desc" => \$with_desc);
+my $res = GetOptions ("config|c=s" => \$cfg_file, 
+	"output|o:s" => \$out_type,
+	"verbosity|v:i" => \$verbosity,
+	"limit|l:i" => \$item_limit,
+	"desc|d" => \$with_desc,
+	"help|h" => \&help,
+	"<>" => \&usage);
 
 if ($verbosity > 2){
 	print "Config file: $cfg_file\n";
