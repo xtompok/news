@@ -15,11 +15,12 @@ my $cfg_file = "news.cfg";
 my $out_type = "term";
 my $item_limit = 10;
 my $with_desc = 0;
+my $show_sites_str = "";
 
 binmode(STDOUT,":utf8");
 
 sub usage{
-	print "Usage: $0 [--config | -c FILE] [--output | -o <html|term>] [--verbosity|-v VERBOSITY] [-d | --desc] [-h | --help]\n";
+	print "Usage: $0 [--config | -c FILE] [--output | -o <html|term>] [--verbosity|-v VERBOSITY] [-d | --desc] [-s | --sites <site1,site2,...>] [-h | --help]\n";
 	exit 1;
 }
 
@@ -31,6 +32,7 @@ sub help{
 	-o, --output	Output format (HTML or terminal)
 	-v, --verbosity	Verbosity
 	-d, --desc	Print with description, not only titles
+	-s, --sites	Print only specified comma separated sites, using Short as a key
 	-h, --help	Print this help
 AMEN
 	exit 0;
@@ -43,13 +45,20 @@ my $res = GetOptions ("config|c=s" => \$cfg_file,
 	"verbosity|v:i" => \$verbosity,
 	"limit|l:i" => \$item_limit,
 	"desc|d" => \$with_desc,
+	"sites|s:s" => \$show_sites_str,
 	"help|h" => \&help,
 	"<>" => \&usage);
+
+my %show_sites;
+foreach my $site (split /,/,$show_sites_str){
+	$show_sites{$site}="";
+} 
 
 if ($verbosity > 2){
 	print "Config file: $cfg_file\n";
 	print "Output type: $out_type\n";
 	print "Verbosity: $verbosity\n";
+	print "Sites: ",keys(%show_sites),"\n";
 }
 
 sub dprint {
@@ -70,19 +79,28 @@ sub parse_config($){
 
 		($value) = $value =~ /^\s*(.+?)\s*$/;
 		
-		dprint("Key: $key\n");
-		dprint("Value: $value\n");
+		if ($verbosity >=6){
+			print("Key: $key\n");
+			print("Value: $value\n");
+		}
 
 
-		if ($key eq "Site"){
-			push @sites, $site if defined $site->{$key};
+		if (($key eq "Site") and
+			(defined $site->{Site}) and 
+			((keys(%show_sites)==0) or 
+			(exists $show_sites{$site->{Short}}))){
+			push @sites, $site;
 			die if not defined $value;
 			$site = {};
 		}
 		$site->{$key} = $value;
 
 	}
-	push @sites, $site if defined $site->{Site};
+	if ((defined $site->{Site}) and 
+		((keys(%show_sites)==0) or 
+		(exists $show_sites{$site->{Short}}))){
+		push @sites, $site;
+	}
 	
 	dprint Dumper(\@sites);
 	return \@sites;
@@ -90,10 +108,12 @@ sub parse_config($){
 
 sub print_console{
 	my $allnews = $_[0];
-	while ((my $title, my $news) = each %{$allnews}){
+	my @keys = sort keys %{$allnews};
+	foreach my $title (@keys){
 		print "$title:\n";
 		print "-" x (length($title)+1)."\n";
 		my $count = 0;
+		my $news = $allnews->{$title};
 		while ((my $item = $$news[$count])and(($count<$item_limit)or($item_limit==0))){
 			print " - $item->{Title}\n";
 			print $item->{Description}."\n" if $with_desc;
@@ -141,7 +161,7 @@ $sites = parse_config($cfg_file);
 
 my %all_news;
 foreach my $site (@$sites){
-	dprint "Site: $site->{Site}, Module: $site->{Module}, URL: $site->{URL} \n";
+	dprint "Site: $site->{Site}, Module: $site->{Module}, URL: $site->{URL}, Short: $site->{Short} \n";
 	require $site->{Module};
 	my $news = get_news($site->{URL});
 	if (not $news){
